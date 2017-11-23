@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+# cmake file from https://github.com/dacap/libuv-cmake
 
 set(LIBUVDIR libuv)
 
@@ -16,6 +16,7 @@ if(WIN32)
   set(SOURCES ${SOURCES}
     ${LIBUVDIR}/src/win/async.c
     ${LIBUVDIR}/src/win/core.c
+    ${LIBUVDIR}/src/win/detect-wakeup.c
     ${LIBUVDIR}/src/win/dl.c
     ${LIBUVDIR}/src/win/error.c
     ${LIBUVDIR}/src/win/fs-event.c
