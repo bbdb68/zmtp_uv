@@ -1,6 +1,6 @@
 
 
-set(LIBUVDIR ../uv/libuv)
+set(LIBUVDIR ../../uv/libuv)
 include_directories(${LIBUVDIR}/include)
 
 
