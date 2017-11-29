@@ -58,6 +58,35 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
   free(buf->base);
 }
 
+void read_zmtp_greetings(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
+{
+  printf("server on read_zmtp_greetings %i\n", (int)nread);
+  if (nread > 0) 
+  {
+    //write_req_t *req = (write_req_t*)malloc(sizeof(write_req_t));
+    //req->buf = uv_buf_init(buf->base, (unsigned int)nread);
+    //uv_write((uv_write_t*)req, client, &req->buf, 1, echo_write);
+    //printf("echo done\n");
+
+    // greetings is accepted, lets fall back on default cb
+    uv_read_stop(client);
+    uv_read_start(client, alloc_buffer, echo_read);
+    return;
+  }
+  if (nread < 0)
+  {
+    if (nread != UV_EOF)
+      fprintf(stderr, "Read error %s\n", uv_err_name((int)nread));
+    else
+      printf("EOF");
+    uv_close((uv_handle_t*)client, on_close);
+  }
+
+  free(buf->base);
+}
+
+
+
 void zmtp_send_greetings(uv_stream_t* stream)
 {
   // send start of ZMTP greetings
@@ -97,7 +126,7 @@ void on_new_connection(uv_stream_t *server, int status) {
   uv_tcp_init(loop, client);
   if (uv_accept(server, (uv_stream_t*)client) == 0) 
   {
-    uv_read_start((uv_stream_t*)client, alloc_buffer, echo_read);
+    uv_read_start((uv_stream_t*)client, alloc_buffer, read_zmtp_greetings);
     zmtp_send_greetings((uv_stream_t*)client);
   }
   else {
