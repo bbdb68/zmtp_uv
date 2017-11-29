@@ -36,7 +36,9 @@ void echo_write(uv_write_t *req, int status) {
   free_write_req(req);
 }
 
-void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) 
+{
+  printf("server on read %i\n", (int)nread);
   if (nread > 0) {
     write_req_t *req = (write_req_t*)malloc(sizeof(write_req_t));
     req->buf = uv_buf_init(buf->base, (unsigned int)nread);
@@ -44,13 +46,44 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     printf("echo done\n");
     return;
   }
-  if (nread < 0) {
+  if (nread < 0) 
+  {
     if (nread != UV_EOF)
       fprintf(stderr, "Read error %s\n", uv_err_name((int)nread));
+    else
+      printf("EOF");
     uv_close((uv_handle_t*)client, on_close);
   }
 
   free(buf->base);
+}
+
+void zmtp_send_greetings(uv_stream_t* stream)
+{
+  // send start of ZMTP greetings
+  uv_write_t* write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
+  write_req->handle = stream;
+  uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
+
+  ULONG size = 11;
+  buf->base = (char*)malloc(size);
+  buf->len = size;
+  buf->base[0] = 0xFF;
+  for (int i = 1; i < 9; i++)
+    buf->base[i] = 0x00;
+  buf->base[9] = 0x7F;
+  buf->base[10] = 0x03;
+
+  int res = uv_write(write_req, stream, buf, 1, NULL); // synchonous write
+  if (res < 0)
+  {
+    printf("uv_write error : '%s'\n", uv_strerror(res));
+    return;
+  }
+  else
+    printf("11 byte greetings send\n");
+  free(buf->base);
+  free(buf);
 }
 
 void on_new_connection(uv_stream_t *server, int status) {
@@ -62,8 +95,10 @@ void on_new_connection(uv_stream_t *server, int status) {
 
   uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
   uv_tcp_init(loop, client);
-  if (uv_accept(server, (uv_stream_t*)client) == 0) {
+  if (uv_accept(server, (uv_stream_t*)client) == 0) 
+  {
     uv_read_start((uv_stream_t*)client, alloc_buffer, echo_read);
+    zmtp_send_greetings((uv_stream_t*)client);
   }
   else {
     uv_close((uv_handle_t*)client, on_close);
