@@ -15,13 +15,10 @@ void input_stream_delete(input_stream_t* stream);
 int input_stream_append(input_stream_t* stream, char* data, size_t size);
 size_t input_stream_pop(input_stream_t* stream, size_t size);
 
-struct input_stream_s
-{
-  char* data;
-  size_t size;
-  size_t capacity;
-};
-
+// accessors
+size_t input_stream_size(input_stream_t* stream);
+size_t input_stream_capacity(input_stream_t* stream);
+char* input_stream_data(input_stream_t* stream);
 
 #ifdef __cplusplus
 }

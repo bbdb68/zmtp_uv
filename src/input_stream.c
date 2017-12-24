@@ -2,6 +2,23 @@
 
 #include <stdlib.h>
 
+// ========================================
+// input stream data structure
+// ========================================
+struct input_stream_s
+{
+  char* data;
+  size_t size;
+  size_t capacity;
+};
+
+// ------------------------------------------------------------
+// field accessors
+// ------------------------------------------------------------
+size_t input_stream_size(input_stream_t* stream) { return stream->size; }
+size_t input_stream_capacity(input_stream_t* stream) { return stream->capacity; }
+char* input_stream_data(input_stream_t* stream) { return stream->data;  }
+
 // ------------------------------------------------------------
 // allocate new input stream
 // ------------------------------------------------------------
