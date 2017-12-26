@@ -18,8 +18,6 @@ int zmtp_stream_connect(zmtp_stream_t* stream, const char* address);  /* zmq add
 int zmtp_stream_bind(zmtp_stream_t* stream, const char* address);
 int zmtp_stream_send(zmtp_stream_t* stream, void* data, size_t size);
 
-// TODO make -private- method
-void zmtp_send_greetings(uv_stream_t* stream);
 
 // todo private
 enum zmtp_stream_state { greetings1, greetings2, frame};

@@ -95,6 +95,10 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
   buf->len = (ULONG)suggested_size;
 }
 
+// TODO make -private- method
+static void zmtp_send_greetings(uv_stream_t* stream);
+
+
 // ---------------------------------------------
 // on connect
 // ---------------------------------------------
@@ -183,7 +187,6 @@ int zmtp_stream_bind(zmtp_stream_t* stream, const char* address)
 
 // ---------------------------------------------
 // send first part of greetings
-// TODO make method of zmtp_stream
 // ---------------------------------------------
 void zmtp_send_greetings(uv_stream_t* stream)
 {
