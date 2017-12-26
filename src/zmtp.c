@@ -1,5 +1,7 @@
 #include "zmtp.h"
 
+#include "zmtp_greetings.h"
+
 // ---------------------------------------------
 // constructor
 // ---------------------------------------------
@@ -95,8 +97,6 @@ static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *b
   buf->len = (ULONG)suggested_size;
 }
 
-// TODO make -private- method
-static void zmtp_send_greetings(uv_stream_t* stream);
 
 
 // ---------------------------------------------
@@ -120,7 +120,8 @@ static void on_connect(uv_connect_t* req, int status)
     return;
   }
 
-  zmtp_send_greetings(req->handle);
+  char major_version = 0x03;
+  zmtp_send_greetings(req->handle, major_version);
 }
 
 // ---------------------------------------------
@@ -155,7 +156,8 @@ static void on_new_connection(uv_stream_t *stream, int status)
   if (uv_accept(stream, (uv_stream_t*)client) == 0)
   {
     uv_read_start((uv_stream_t*)client, alloc_buffer, zmtp_on_read);
-    zmtp_send_greetings((uv_stream_t*)client);
+    char major_version = 0x03;
+    zmtp_send_greetings((uv_stream_t*)client, major_version);
   }
   else {
     fprintf(stderr, "New uv_accept error \n");
@@ -185,33 +187,3 @@ int zmtp_stream_bind(zmtp_stream_t* stream, const char* address)
 }
 
 
-// ---------------------------------------------
-// send first part of greetings
-// ---------------------------------------------
-void zmtp_send_greetings(uv_stream_t* stream)
-{
-  // send start of ZMTP greetings
-  uv_write_t* write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
-  write_req->handle = stream;
-  uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
-
-  ULONG size = 11;
-  buf->base = (char*)malloc(size);
-  buf->len = size;
-  buf->base[0] = 0xFF;
-  for (int i = 1; i < 9; i++)
-    buf->base[i] = 0x00;
-  buf->base[9] = 0x7F;
-  buf->base[10] = 0x03; // zmtp version 3
-
-  int res = uv_write(write_req, stream, buf, 1, NULL); // synchonous write
-  if (res < 0)
-  {
-    printf("uv_write error : '%s'\n", uv_strerror(res));
-    return;
-  }
-  else
-    printf("11 byte greetings send\n");
-  free(buf->base);
-  free(buf);
-}
