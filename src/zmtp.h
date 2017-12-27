@@ -2,6 +2,7 @@
 
 #include "uv.h"
 #include "input_stream.h"
+#include "zmtp_greetings.h"
 
 #include <stdbool.h>
 
@@ -34,6 +35,7 @@ struct zmtp_stream_s
   enum zmtp_stream_state status;
   input_stream_t* input_stream;     // input buffer
   zmtp_stream_read_cb read_cb;
+  zmtp_greetings_t* greetings;
 };
 
 

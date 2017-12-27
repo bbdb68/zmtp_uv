@@ -1,6 +1,70 @@
 #include "zmtp_greetings.h"
 
+// ---------------------------------------------
+// constructor
+// ---------------------------------------------
+zmtp_greetings_t* zmtp_greetings_new(int major, int minor, bool as_server, char* mechansim)
+{
+  zmtp_greetings_t* result = (zmtp_greetings_t*)malloc(sizeof(zmtp_greetings_t));
+  result->major_version = major;
+  result->minor_version = minor;
+  result->as_server = as_server;
+  strcpy_s(result->mechanism, sizeof(result->mechanism), mechansim);
+  return result;
+}
 
+// ---------------------------------------------
+// destructor
+// ---------------------------------------------
+void zmtp_greetings_delete(zmtp_greetings_t* g)
+{
+  free(g);
+}
+
+// ---------------------------------------------
+// build greetings head
+// ---------------------------------------------
+char* zmtp_greetings_head(zmtp_greetings_t* g)
+{
+  const int size = 11;
+  char *result = (char*)malloc(size * sizeof(char));
+  for (int i = 0; i < size; i++)
+    result[i] = 0x00;
+  result[0] = 0xFF;
+  result[9] = 0x7F;
+  result[10] = g->major_version;
+  return result;
+}
+
+// ---------------------------------------------
+// build greetings tail
+// ---------------------------------------------
+char* zmtp_greetings_tail(zmtp_greetings_t* g)
+{
+  const int size = 53;
+  char *result = (char*)malloc(size * sizeof(char));
+  for (int i = 0; i < size; i++)
+    result[i] = 0x00;
+  result[0] = g->minor_version;
+  strcpy_s(result + 1, sizeof(g->mechanism), g->mechanism);
+  result[21] = g->as_server ? 0x01 : 0x00;
+  return result;
+}
+
+// ---------------------------------------------
+// test if tow instances matches on version and 
+// mechasnim
+// ---------------------------------------------
+bool zmtp_greetings_match(zmtp_greetings_t* a, zmtp_greetings_t* b)
+{
+  return (a->major_version == b->major_version)
+    && (a->minor_version == b->minor_version)
+    && (strcmp(a->mechanism, b->mechanism) == 0);
+}
+
+// ---------------------------------------------
+// send callback
+// ---------------------------------------------
 static void zmtp_greetings_sent(uv_write_t* req, int status)
 {
   if (status < 0)
@@ -14,10 +78,11 @@ static void zmtp_greetings_sent(uv_write_t* req, int status)
   free(req);
 }
 
+
 // ---------------------------------------------
 // send first part of greetings
 // ---------------------------------------------
-void zmtp_send_greetings_start(uv_stream_t* stream, char major_version)
+void zmtp_send_greetings_start(zmtp_greetings_t* greetings, uv_stream_t* stream)
 {
   printf("send greetings part 1...");
   uv_write_t* write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
@@ -25,15 +90,10 @@ void zmtp_send_greetings_start(uv_stream_t* stream, char major_version)
   uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
   write_req->data = buf;
 
+  char* content = zmtp_greetings_head(greetings);
   ULONG size = 11;
-  buf->base = (char*)malloc(size);
+  buf->base = content;
   buf->len = size;
-  buf->base[0] = 0xFF;
-  for (int i = 1; i < 9; i++)
-    buf->base[i] = 0x00;
-  buf->base[9] = 0x7F;
-  buf->base[10] = major_version;
-
 
   int status = uv_write(write_req, stream, buf, 1, zmtp_greetings_sent);
   if (status < 0)
@@ -45,7 +105,7 @@ void zmtp_send_greetings_start(uv_stream_t* stream, char major_version)
 // ---------------------------------------------
 // send second part of greetings
 // ---------------------------------------------
-void zmtp_send_greetings_end(uv_stream_t* stream, char minor_version, char* mechanism, int mechanism_len, bool as_server)
+void zmtp_send_greetings_end(zmtp_greetings_t* greetings, uv_stream_t* stream)
 {
   printf("send greetings part 2...");
   uv_write_t* write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
@@ -53,19 +113,13 @@ void zmtp_send_greetings_end(uv_stream_t* stream, char minor_version, char* mech
   uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
   write_req->data = buf;
 
+  char* content = zmtp_greetings_tail(greetings);
   ULONG size = 53;
-  buf->base = (char*)malloc(size);
+  buf->base = content;
   buf->len = size;
-  for (ULONG i = 0; i < size; i++)
-    buf->base[i] = 0x00;
-
-  buf->base[0] = minor_version;
-  if (mechanism_len > 20) mechanism_len = 20;
-  memcpy(buf->base+1, mechanism, mechanism_len);
-  buf->base[21] = as_server ? 0x01 : 0x00;
 
   int status = uv_write(write_req, stream, buf, 1, zmtp_greetings_sent);
-  if (status < 0) 
+  if (status < 0)
     printf("uv write error : '%s'\n", uv_strerror(status));
   else
     printf("done.\n");

@@ -1,6 +1,5 @@
 #include "zmtp.h"
 
-#include "zmtp_greetings.h"
 
 // ---------------------------------------------
 // constructor
@@ -13,6 +12,7 @@ zmtp_stream_t* zmtp_stream_new(uv_stream_t* stream, zmtp_stream_read_cb read_cb)
   result->stream = stream;
   result->read_cb = read_cb;
   result->endpointstream = NULL;
+  result->greetings = zmtp_greetings_new(3, 0, false, "NULL");
   return result;
 }
 
@@ -22,6 +22,7 @@ zmtp_stream_t* zmtp_stream_new(uv_stream_t* stream, zmtp_stream_read_cb read_cb)
 void zmtp_stream_delete(zmtp_stream_t* s)
 {
   input_stream_delete(s->input_stream);
+  zmtp_greetings_delete(s->greetings);
   free(s);
 }
 
@@ -102,7 +103,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
     bool as_server = false;
     //printf("stream status read %d write %d\n", uv_is_readable(zmtp_stream->stream), uv_is_writable(zmtp_stream->stream));
     
-    zmtp_send_greetings_end(zmtp_stream->stream, minor_version, "NULL", 4, as_server);
+    zmtp_send_greetings_end(zmtp_stream->greetings, zmtp_stream->stream);
   }
   //printf("stream status read %d write %d\n", uv_is_readable(zmtp_stream->stream), uv_is_writable(zmtp_stream->stream));
   if (zmtp_stream->status == greetings2 && input_stream_size(is) >= ZMTP_GREETINGS_END_LEN)
@@ -149,8 +150,7 @@ static void on_connect(uv_connect_t* req, int status)
     exit(1);
   }
 
-  char major_version = 0x03;
-  zmtp_send_greetings_start(req->handle, major_version);
+  zmtp_send_greetings_start(stream->greetings, req->handle);
 }
 
 // ---------------------------------------------
@@ -186,14 +186,13 @@ static void on_new_connection(uv_stream_t *stream, int status)
   }
   zmtp_stream_t* zmtp_stream = (zmtp_stream_t*)stream->data;
 
-  zmtp_stream->stream = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-  uv_tcp_init(stream->loop, zmtp_stream->stream);
+  zmtp_stream->stream = (uv_stream_t*)malloc(sizeof(uv_tcp_t));
+  uv_tcp_init(stream->loop, (uv_tcp_t*)zmtp_stream->stream);
   zmtp_stream->stream->data = zmtp_stream; // pass zmtp_stream
   if (uv_accept(stream, (uv_stream_t*)zmtp_stream->stream) == 0)
   {
     uv_read_start((uv_stream_t*)zmtp_stream->stream, alloc_buffer, zmtp_on_read);
-    char major_version = 0x03;
-    zmtp_send_greetings_start((uv_stream_t*)zmtp_stream->stream, major_version);
+    zmtp_send_greetings_start(zmtp_stream->greetings,(uv_stream_t*)zmtp_stream->stream);
   }
   else {
     fprintf(stderr, "Uv_accept error \n");
