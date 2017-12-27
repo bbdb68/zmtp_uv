@@ -45,7 +45,7 @@ static int parse_greetings_1(input_stream_t* is)
 // ---------------------------------------------
 // parse first part of greetings
 // ---------------------------------------------
-static int parse_greetings_2(input_stream_t* is)
+static int parse_greetings_2(zmtp_greetings_t* self_greetings, input_stream_t* is)
 {
   printf("parse whole greetings\n");
   char* data = input_stream_data(is);
@@ -53,6 +53,17 @@ static int parse_greetings_2(input_stream_t* is)
   bool as_server = zmtp_parse_as_server(data);
   char* mechanism = zmtp_parse_mechanism(data);
   printf("peer : minor version=%d, as server=%d, mechanism='%s'\n", minor_version,as_server,mechanism);
+  if (strcmp(mechanism, self_greetings->mechanism) != 0)
+  {
+    printf("incompatible mechanims. abort.");
+    exit(1);
+  }
+  if (minor_version != self_greetings->minor_version)
+  {
+    printf("incompatible minor version. abort.");
+    exit(1);
+  }
+  // TODO store as_server info
   return 0;
 }
 
@@ -101,14 +112,12 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
     zmtp_stream->status = greetings2;
     char minor_version = 0x00;
     bool as_server = false;
-    //printf("stream status read %d write %d\n", uv_is_readable(zmtp_stream->stream), uv_is_writable(zmtp_stream->stream));
     
     zmtp_send_greetings_end(zmtp_stream->greetings, zmtp_stream->stream);
   }
-  //printf("stream status read %d write %d\n", uv_is_readable(zmtp_stream->stream), uv_is_writable(zmtp_stream->stream));
   if (zmtp_stream->status == greetings2 && input_stream_size(is) >= ZMTP_GREETINGS_END_LEN)
   {
-    int res = parse_greetings_2(is);
+    int res = parse_greetings_2(zmtp_stream->greetings, is);
     input_stream_pop(is, ZMTP_GREETINGS_END_LEN);
     zmtp_stream->status = frame;
     printf("ready for frames\n");
