@@ -14,7 +14,7 @@ int main()
 {
   printf("Hello, I am the client\n");
   uv_loop_t* loop = uv_default_loop();
-  
+
   uv_tcp_t* socket = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
   uv_tcp_init(loop, socket);
 
@@ -23,6 +23,6 @@ int main()
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  _CrtDumpMemoryLeaks();
+  //_CrtDumpMemoryLeaks();
   return 0;
 }

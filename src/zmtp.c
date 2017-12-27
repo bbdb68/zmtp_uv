@@ -12,6 +12,7 @@ zmtp_stream_t* zmtp_stream_new(uv_stream_t* stream, zmtp_stream_read_cb read_cb)
   result->status = greetings1;
   result->stream = stream;
   result->read_cb = read_cb;
+  result->endpointstream = NULL;
   return result;
 }
 
@@ -36,13 +37,7 @@ static int parse_greetings_1(input_stream_t* is)
     exit(1);
   }
   int version = (int)data[10];
-  printf("peer version=%d\n", version);
-  if (version != 3)
-  {
-    printf("Only ZMTP version 3 is supported. abort.");
-    exit(1);
-  }
-  input_stream_pop(is, 11);
+  printf("parsed peer version=%d\n", version);
   return version;
 }
 
@@ -51,6 +46,10 @@ static int parse_greetings_1(input_stream_t* is)
 // ---------------------------------------------
 static int parse_greetings_2(input_stream_t* is)
 {
+  printf("parse whole greetings\n");
+  char* data = input_stream_data(is);
+  int minor_version = (int)data[0];
+  printf("peer minor version=%d\n", minor_version);
   return 0;
 }
 
@@ -67,21 +66,49 @@ static void parse_frame(zmtp_stream_t* zmtp_stream)
 // ---------------------------------------------
 static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
 {
+  if (nread == UV_EOF)
+  {
+    // TODO handle EOF
+    printf("EOF\n");
+    return;
+  }
+  if (nread < 0)
+  {
+    printf("on read error : '%s'\n", uv_strerror((int)nread));
+    exit(1);
+  }
+  printf("on read %d bytes\n", (int)nread);
   zmtp_stream_t* zmtp_stream = client->data;
   input_stream_t* is = zmtp_stream->input_stream;
   input_stream_append(is, buf->base, nread);
 
-  if (zmtp_stream->status==greetings1 && input_stream_size(is) >= 11) // first greetings received
+  if (buf && buf->base)
+    free(buf->base);
+
+  if (zmtp_stream->status==greetings1 && input_stream_size(is) >= ZMTP_GREETINGS_START_LEN) // first greetings received
   {
     int version = parse_greetings_1(is);
+    if (version != 3)
+    {
+      printf("Only ZMTP v3.0 is supported. Abort.\n");
+      exit(1);
+    }
+    // now send main part of greetings
+    input_stream_pop(is, ZMTP_GREETINGS_START_LEN);
     zmtp_stream->status = greetings2;
-    // ok, so send main part of greetings
-
+    char minor_version = 0x00;
+    int as_server = 0;
+    //printf("stream status read %d write %d\n", uv_is_readable(zmtp_stream->stream), uv_is_writable(zmtp_stream->stream));
+    
+    zmtp_send_greetings_end(zmtp_stream->stream, minor_version, "NULL", 4, as_server);
   }
-  if (zmtp_stream->status == greetings2 && input_stream_size(is) >= 31)
+  //printf("stream status read %d write %d\n", uv_is_readable(zmtp_stream->stream), uv_is_writable(zmtp_stream->stream));
+  if (zmtp_stream->status == greetings2 && input_stream_size(is) >= ZMTP_GREETINGS_END_LEN)
   {
     int res = parse_greetings_2(is);
+    input_stream_pop(is, ZMTP_GREETINGS_END_LEN);
     zmtp_stream->status = frame;
+    printf("ready for frames\n");
   }
   if (zmtp_stream->status == frame)
   {
@@ -108,7 +135,7 @@ static void on_connect(uv_connect_t* req, int status)
   {
     printf("on connect error ");
     printf("%s\n", uv_strerror(status));
-    return;
+    exit(1);
   }
   zmtp_stream_t* stream = (zmtp_stream_t*)(req->data);
   req->handle->data = stream;
@@ -117,11 +144,11 @@ static void on_connect(uv_connect_t* req, int status)
   if (res < 0)
   {
     printf("uv read start error : '%s'\n", uv_strerror(res));
-    return;
+    exit(1);
   }
 
   char major_version = 0x03;
-  zmtp_send_greetings(req->handle, major_version);
+  zmtp_send_greetings_start(req->handle, major_version);
 }
 
 // ---------------------------------------------
@@ -136,7 +163,13 @@ int zmtp_stream_connect(zmtp_stream_t* stream, const char* address)
   struct sockaddr_in dest; // TODO parse address, handle pipe_t
   uv_ip4_addr("127.0.0.1", 7000, &dest);
 
-  return uv_tcp_connect(connect, (uv_tcp_t*)stream->stream, (const struct sockaddr*)&dest, on_connect);
+  int status =  uv_tcp_connect(connect, (uv_tcp_t*)stream->stream, (const struct sockaddr*)&dest, on_connect);
+  if (status < 0)
+  {
+    printf("uv_tcp_connect error '%s'", uv_strerror(status));
+    exit(1);
+  }
+  return 0;
 }
 
 // ---------------------------------------------
@@ -149,19 +182,19 @@ static void on_new_connection(uv_stream_t *stream, int status)
     // error!
     return;
   }
+  zmtp_stream_t* zmtp_stream = (zmtp_stream_t*)stream->data;
 
-  uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-  uv_tcp_init(stream->loop, client);
-  client->data = stream->data; // pass zmtp_stream
-  if (uv_accept(stream, (uv_stream_t*)client) == 0)
+  zmtp_stream->stream = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+  uv_tcp_init(stream->loop, zmtp_stream->stream);
+  zmtp_stream->stream->data = zmtp_stream; // pass zmtp_stream
+  if (uv_accept(stream, (uv_stream_t*)zmtp_stream->stream) == 0)
   {
-    uv_read_start((uv_stream_t*)client, alloc_buffer, zmtp_on_read);
+    uv_read_start((uv_stream_t*)zmtp_stream->stream, alloc_buffer, zmtp_on_read);
     char major_version = 0x03;
-    zmtp_send_greetings((uv_stream_t*)client, major_version);
+    zmtp_send_greetings_start((uv_stream_t*)zmtp_stream->stream, major_version);
   }
   else {
-    fprintf(stderr, "New uv_accept error \n");
-//    uv_close((uv_handle_t*)client, on_close);
+    fprintf(stderr, "Uv_accept error \n");
   }
 }
 
@@ -171,13 +204,18 @@ static void on_new_connection(uv_stream_t *stream, int status)
 int zmtp_stream_bind(zmtp_stream_t* stream, const char* address)
 {
   struct sockaddr_in addr;
+  stream->endpointstream = stream->stream;
   uv_ip4_addr("0.0.0.0", 7000, &addr); // TODO parse address
-  stream->stream->data = stream;
+  stream->endpointstream->data = stream;
 
-  int res = uv_tcp_bind((uv_tcp_t*)stream->stream, (const struct sockaddr*)&addr, 0);
-  // TODO check res
+  int res = uv_tcp_bind((uv_tcp_t*)stream->endpointstream, (const struct sockaddr*)&addr, 0);
+  if (res < 0)
+  {
+    printf("uv_tcp_bind error '%s'", uv_strerror(res));
+    exit(1);
+  }
   int BACKLOG = 128;
-  int r = uv_listen(stream->stream, BACKLOG, on_new_connection);
+  int r = uv_listen(stream->endpointstream, BACKLOG, on_new_connection);
   if (r) {
     fprintf(stderr, "Listen error %s\n", uv_strerror(r));
     return 1;

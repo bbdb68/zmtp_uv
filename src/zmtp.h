@@ -3,6 +3,8 @@
 #include "uv.h"
 #include "input_stream.h"
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,6 +29,7 @@ enum zmtp_stream_state { greetings1, greetings2, frame};
 // -------------------------------
 struct zmtp_stream_s
 {
+  uv_stream_t* endpointstream;
   uv_stream_t* stream;              // the transport stream
   enum zmtp_stream_state status;
   input_stream_t* input_stream;     // input buffer
