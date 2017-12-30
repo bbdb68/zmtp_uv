@@ -1,6 +1,6 @@
 * handle zmtp commands
 
-* hanle zmtp frames
+* handle multi frame
 
 * modularization : 
    * tranpsort
