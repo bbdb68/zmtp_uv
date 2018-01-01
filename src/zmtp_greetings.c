@@ -1,4 +1,5 @@
 #include "zmtp_greetings.h"
+#include <stdlib.h>
 
 // ---------------------------------------------
 // constructor
@@ -9,7 +10,7 @@ zmtp_greetings_t* zmtp_greetings_new(int major, int minor, bool as_server, char*
   result->major_version = major;
   result->minor_version = minor;
   result->as_server = as_server;
-  strcpy_s(result->mechanism, sizeof(result->mechanism), mechansim);
+  strcpy(result->mechanism,  mechansim);
   return result;
 }
 
@@ -46,7 +47,7 @@ char* zmtp_greetings_tail(zmtp_greetings_t* g)
   for (int i = 0; i < size; i++)
     result[i] = 0x00;
   result[0] = g->minor_version;
-  strcpy_s(result + 1, sizeof(g->mechanism), g->mechanism);
+  strcpy(result + 1,  g->mechanism);
   result[21] = g->as_server ? 0x01 : 0x00;
   return result;
 }
@@ -91,7 +92,7 @@ void zmtp_send_greetings_start(zmtp_greetings_t* greetings, uv_stream_t* stream)
   write_req->data = buf;
 
   char* content = zmtp_greetings_head(greetings);
-  ULONG size = 11;
+  unsigned long size = 11;
   buf->base = content;
   buf->len = size;
 
@@ -114,7 +115,7 @@ void zmtp_send_greetings_end(zmtp_greetings_t* greetings, uv_stream_t* stream)
   write_req->data = buf;
 
   char* content = zmtp_greetings_tail(greetings);
-  ULONG size = 53;
+  unsigned long size = 53;
   buf->base = content;
   buf->len = size;
 

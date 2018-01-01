@@ -1,5 +1,7 @@
 #include "zmtp.h"
 
+#include <stdlib.h>
+
 // ---------------------------------------------
 // helper function for network order handling
 // ---------------------------------------------
@@ -126,7 +128,7 @@ int zmtp_stream_send(zmtp_stream_t* stream, void* data, size_t size)
   uv_buf_t* content_buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
   content_write_req->data = content_buf;
   content_buf->base = data;
-  content_buf->len = (ULONG)size;
+  content_buf->len = (unsigned long)size;
   status = uv_write(content_write_req, s, content_buf, 1, on_msg_sent);
   if (status < 0)
     printf("uv write error : '%s'\n", uv_strerror(status));
@@ -232,7 +234,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
 // ---------------------------------------------
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->base = (char*)malloc(suggested_size);
-  buf->len = (ULONG)suggested_size;
+  buf->len = (unsigned long)suggested_size;
 }
 
 
