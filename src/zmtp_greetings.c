@@ -76,6 +76,7 @@ static void zmtp_greetings_sent(uv_write_t* req, int status)
   uv_buf_t* buf = (uv_buf_t*)req->data;
   printf("%d bytes greetings sucessfully sent.\n", buf->len);
   free(buf->base);
+  free(buf);
   free(req);
 }
 

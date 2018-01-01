@@ -87,6 +87,8 @@ static void on_msg_sent(uv_write_t* req, int status)
   uv_buf_t* buf = (uv_buf_t*)req->data;
   printf("%d bytes sucessfully sent.\n", buf->len);
   free(buf->base);
+  free(buf);
+  free(req);
 }
 
 // ---------------------------------------------
@@ -267,6 +269,7 @@ static void on_connect(uv_connect_t* req, int status)
   }
 
   zmtp_send_greetings_start(z_stream->greetings, req->handle);
+  free(req);
 }
 
 // ---------------------------------------------
