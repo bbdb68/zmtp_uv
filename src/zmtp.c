@@ -48,7 +48,7 @@ static int parse_greetings_1(input_stream_t* is)
     exit(1);
   }
   int version = (int)data[10];
-  printf("parsed peer version=%d\n", version);
+  //printf("parsed peer version=%d\n", version);
   return version;
 }
 
@@ -57,12 +57,12 @@ static int parse_greetings_1(input_stream_t* is)
 // ---------------------------------------------
 static int parse_greetings_2(zmtp_greetings_t* self_greetings, input_stream_t* is)
 {
-  printf("parse whole greetings\n");
+  //printf("parse whole greetings\n");
   char* data = input_stream_data(is);
   int minor_version = zmtp_parse_minor_version(data);
   bool as_server = zmtp_parse_as_server(data);
   char* mechanism = zmtp_parse_mechanism(data);
-  printf("peer : minor version=%d, as server=%d, mechanism='%s'\n", minor_version,as_server,mechanism);
+  //printf("peer : minor version=%d, as server=%d, mechanism='%s'\n", minor_version,as_server,mechanism);
   if (strcmp(mechanism, self_greetings->mechanism) != 0)
   {
     printf("incompatible mechanims. abort.");
@@ -85,7 +85,7 @@ static void on_msg_sent(uv_write_t* req, int status)
     exit(1);
   }
   uv_buf_t* buf = (uv_buf_t*)req->data;
-  printf("%d bytes sucessfully sent.\n", buf->len);
+  //printf("%d bytes sucessfully sent.\n", buf->len);
   free(buf->base);
   free(buf);
   free(req);
@@ -190,7 +190,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
     printf("on read error : '%s'\n", uv_strerror((int)nread));
     exit(1);
   }
-  printf("on read %d bytes\n", (int)nread);
+  //printf("on read %d bytes\n", (int)nread);
   zmtp_stream_connect_t* z_req = client->data;
   zmtp_stream_t* zmtp_stream = z_req->stream;
   input_stream_t* is = zmtp_stream->input_stream;
@@ -220,7 +220,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
     int res = parse_greetings_2(zmtp_stream->greetings, is);
     input_stream_pop(is, ZMTP_GREETINGS_END_LEN);
     zmtp_stream->status = frame;
-    printf("ready for frames\n");
+    //printf("ready for frames\n");
     // TODO security handshake
     if (zmtp_stream->connect_cb)
       zmtp_stream->connect_cb(z_req, 0);

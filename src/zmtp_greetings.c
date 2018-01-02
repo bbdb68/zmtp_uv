@@ -74,7 +74,7 @@ static void zmtp_greetings_sent(uv_write_t* req, int status)
     exit(1);
   }
   uv_buf_t* buf = (uv_buf_t*)req->data;
-  printf("%d bytes greetings sucessfully sent.\n", buf->len);
+  //printf("%d bytes greetings sucessfully sent.\n", buf->len);
   free(buf->base);
   free(buf);
   free(req);
@@ -86,7 +86,7 @@ static void zmtp_greetings_sent(uv_write_t* req, int status)
 // ---------------------------------------------
 void zmtp_send_greetings_start(zmtp_greetings_t* greetings, uv_stream_t* stream)
 {
-  printf("send greetings part 1...");
+  //printf("send greetings part 1...");
   uv_write_t* write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
   write_req->handle = stream;
   uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
@@ -100,8 +100,8 @@ void zmtp_send_greetings_start(zmtp_greetings_t* greetings, uv_stream_t* stream)
   int status = uv_write(write_req, stream, buf, 1, zmtp_greetings_sent);
   if (status < 0)
     printf("uv write error : '%s'\n", uv_strerror(status));
-  else
-    printf("done.\n");
+  //else
+  //  printf("done.\n");
 }
 
 // ---------------------------------------------
@@ -109,7 +109,7 @@ void zmtp_send_greetings_start(zmtp_greetings_t* greetings, uv_stream_t* stream)
 // ---------------------------------------------
 void zmtp_send_greetings_end(zmtp_greetings_t* greetings, uv_stream_t* stream)
 {
-  printf("send greetings part 2...");
+  //printf("send greetings part 2...");
   uv_write_t* write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
   write_req->handle = stream;
   uv_buf_t* buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
@@ -123,8 +123,8 @@ void zmtp_send_greetings_end(zmtp_greetings_t* greetings, uv_stream_t* stream)
   int status = uv_write(write_req, stream, buf, 1, zmtp_greetings_sent);
   if (status < 0)
     printf("uv write error : '%s'\n", uv_strerror(status));
-  else
-    printf("done.\n");
+  //else
+  //  printf("done.\n");
 }
 
 
@@ -139,7 +139,7 @@ int zmtp_parse_greetings_1(char* data)
     exit(1);
   }
   int version = (int)data[10];
-  printf("parsed peer version=%d\n", version);
+  //printf("parsed peer version=%d\n", version);
   return version;
 }
 
@@ -149,7 +149,7 @@ int zmtp_parse_greetings_1(char* data)
 int zmtp_parse_minor_version(char* data)
 {
   int minor_version = (int)data[0];
-  printf("peer minor version=%d\n", minor_version);
+  //printf("peer minor version=%d\n", minor_version);
   return minor_version;
 }
 
