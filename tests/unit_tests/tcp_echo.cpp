@@ -22,7 +22,7 @@ static void client_on_connect(zmtp_stream_connect_t* req, int status)
     exit(1);
   }
   char* data = (char*)malloc(6 * sizeof(char)); // cannot send static data for now
-  strcpy_s(data, 6, "Hello");
+  strcpy(data, "Hello");
   zmtp_stream_send(req->stream, data, 5); // send callback missing
 }
 
@@ -47,6 +47,14 @@ TEST_CASE("tcp_echo")
 {
   uv_loop_t* loop = uv_default_loop();
 
+  // setup server
+  uv_tcp_t* server = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+  uv_tcp_init(loop, server);
+
+
+  zmtp_stream_t* s = zmtp_stream_new((uv_stream_t*)server, server_echo_on_read);
+  zmtp_stream_bind(s, "<not yet parsed address>");
+
   // setup client
   uv_tcp_t* socket = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
   uv_tcp_init(loop, socket);
@@ -56,13 +64,6 @@ TEST_CASE("tcp_echo")
   zmtp_stream_connect_t* connect_req = (zmtp_stream_connect_t*)malloc(sizeof(zmtp_stream_connect_t));
   int res = zmtp_stream_connect(connect_req, zmtp_stream, "<not yet parsed address>", client_on_connect);
 
-  // setup server
-  uv_tcp_t* server = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-  uv_tcp_init(loop, server);
-
-
-  zmtp_stream_t* s = zmtp_stream_new((uv_stream_t*)server, server_echo_on_read);
-  zmtp_stream_bind(s, "<not yet parsed address>");
 
 
   uv_run(loop, UV_RUN_DEFAULT);
