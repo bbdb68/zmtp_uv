@@ -68,4 +68,8 @@ TEST_CASE("tcp_echo")
 
   uv_run(loop, UV_RUN_DEFAULT);
 
+  zmtp_stream_delete(zmtp_stream);
+  zmtp_stream_delete(s);
+  free(server);
+  free(socket);
 }

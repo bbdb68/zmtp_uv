@@ -32,6 +32,8 @@ zmtp_stream_t* zmtp_stream_new(uv_stream_t* stream, zmtp_stream_read_cb read_cb)
 void zmtp_stream_delete(zmtp_stream_t* s)
 {
   input_stream_delete(s->input_stream);
+  if( s->endpointstream )
+    free(s->stream); // correct mais tordu, endpoint not owned
   zmtp_greetings_delete(s->greetings);
   free(s);
 }
