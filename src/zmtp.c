@@ -1,5 +1,7 @@
 #include "zmtp.h"
 
+#include <stdlib.h>
+
 // ---------------------------------------------
 // helper function for network order handling
 // ---------------------------------------------
@@ -30,6 +32,8 @@ zmtp_stream_t* zmtp_stream_new(uv_stream_t* stream, zmtp_stream_read_cb read_cb)
 void zmtp_stream_delete(zmtp_stream_t* s)
 {
   input_stream_delete(s->input_stream);
+  if( s->endpointstream )
+    free(s->stream); // correct mais tordu, endpoint not owned
   zmtp_greetings_delete(s->greetings);
   free(s);
 }
@@ -46,7 +50,7 @@ static int parse_greetings_1(input_stream_t* is)
     exit(1);
   }
   int version = (int)data[10];
-  printf("parsed peer version=%d\n", version);
+  //printf("parsed peer version=%d\n", version);
   return version;
 }
 
@@ -55,12 +59,12 @@ static int parse_greetings_1(input_stream_t* is)
 // ---------------------------------------------
 static int parse_greetings_2(zmtp_greetings_t* self_greetings, input_stream_t* is)
 {
-  printf("parse whole greetings\n");
+  //printf("parse whole greetings\n");
   char* data = input_stream_data(is);
   int minor_version = zmtp_parse_minor_version(data);
   bool as_server = zmtp_parse_as_server(data);
   char* mechanism = zmtp_parse_mechanism(data);
-  printf("peer : minor version=%d, as server=%d, mechanism='%s'\n", minor_version,as_server,mechanism);
+  //printf("peer : minor version=%d, as server=%d, mechanism='%s'\n", minor_version,as_server,mechanism);
   if (strcmp(mechanism, self_greetings->mechanism) != 0)
   {
     printf("incompatible mechanims. abort.");
@@ -83,8 +87,10 @@ static void on_msg_sent(uv_write_t* req, int status)
     exit(1);
   }
   uv_buf_t* buf = (uv_buf_t*)req->data;
-  printf("%d bytes sucessfully sent.\n", buf->len);
+  //printf("%d bytes sucessfully sent.\n", buf->len);
   free(buf->base);
+  free(buf);
+  free(req);
 }
 
 // ---------------------------------------------
@@ -126,7 +132,7 @@ int zmtp_stream_send(zmtp_stream_t* stream, void* data, size_t size)
   uv_buf_t* content_buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
   content_write_req->data = content_buf;
   content_buf->base = data;
-  content_buf->len = (ULONG)size;
+  content_buf->len = (unsigned long)size;
   status = uv_write(content_write_req, s, content_buf, 1, on_msg_sent);
   if (status < 0)
     printf("uv write error : '%s'\n", uv_strerror(status));
@@ -186,7 +192,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
     printf("on read error : '%s'\n", uv_strerror((int)nread));
     exit(1);
   }
-  printf("on read %d bytes\n", (int)nread);
+  //printf("on read %d bytes\n", (int)nread);
   zmtp_stream_connect_t* z_req = client->data;
   zmtp_stream_t* zmtp_stream = z_req->stream;
   input_stream_t* is = zmtp_stream->input_stream;
@@ -216,7 +222,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
     int res = parse_greetings_2(zmtp_stream->greetings, is);
     input_stream_pop(is, ZMTP_GREETINGS_END_LEN);
     zmtp_stream->status = frame;
-    printf("ready for frames\n");
+    //printf("ready for frames\n");
     // TODO security handshake
     if (zmtp_stream->connect_cb)
       zmtp_stream->connect_cb(z_req, 0);
@@ -232,7 +238,7 @@ static void zmtp_on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf
 // ---------------------------------------------
 static void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->base = (char*)malloc(suggested_size);
-  buf->len = (ULONG)suggested_size;
+  buf->len = (unsigned long)suggested_size;
 }
 
 
@@ -265,6 +271,7 @@ static void on_connect(uv_connect_t* req, int status)
   }
 
   zmtp_send_greetings_start(z_stream->greetings, req->handle);
+  free(req);
 }
 
 // ---------------------------------------------

@@ -1,6 +1,4 @@
-#define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
-#include <crtdbg.h>
 
 #include "uv.h"
 #include "zmtp.h"
@@ -14,7 +12,7 @@ void on_connect(zmtp_stream_connect_t* req, int status)
     exit(1);
   }
   char* data = malloc(6*sizeof(char)); // cannot send static data for now
-  strcpy_s(data, 6, "Hello");
+  strcpy(data, "Hello");
   zmtp_stream_send(req->stream, data, 5); // send callback missing
 }
 
@@ -48,6 +46,8 @@ int main()
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  _CrtDumpMemoryLeaks();
+  zmtp_stream_delete(zmtp_stream);
+  free(socket);
+
   return 0;
 }
