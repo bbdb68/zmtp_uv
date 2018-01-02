@@ -33,7 +33,11 @@ void zmtp_stream_delete(zmtp_stream_t* s)
 {
   input_stream_delete(s->input_stream);
   if( s->endpointstream )
+  {
+    if( s->stream->data )
+      free(s->stream->data ); // the z_req
     free(s->stream); // correct mais tordu, endpoint not owned
+  }
   zmtp_greetings_delete(s->greetings);
   free(s);
 }
