@@ -10,7 +10,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   list(APPEND libraries pthread)
 endif()
 
-set(SRC main.cpp idle.cpp test_input_stream.cpp)
+set(SRC main.cpp idle.cpp test_input_stream.cpp tcp_echo.cpp)
 
 add_executable(tests ${SRC})
 target_link_libraries(tests ${libraries})
